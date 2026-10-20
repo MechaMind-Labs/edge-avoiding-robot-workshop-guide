@@ -1,6 +1,6 @@
 > **What this is:** the 29-step handout for my live workshop *Mastering ROS 2 — Build an Edge-Avoiding Robot from Scratch* (12 July 2025): workspace, URDF, sensors, Gazebo, ros2_control and the avoidance node, written so a beginner can follow it alone.
 >
-> Recording: [YouTube (2.5 h)](https://youtu.be/luZq317FUrE) · Finished code: [MechaMind-Labs/Edge_Avoiding_Robot_Gazebo](https://github.com/MechaMind-Labs/Edge_Avoiding_Robot_Gazebo) · TurtleSim basics: [Readme_Turtle.md](Readme_Turtle.md)
+> Recording: [YouTube (2.5 h)](https://youtu.be/luZq317FUrE) · Finished code: [MechaMind-Labs/edge-avoiding-robot](https://github.com/MechaMind-Labs/edge-avoiding-robot) · TurtleSim basics: [Readme_Turtle.md](Readme_Turtle.md)
 
 # 🚀 ROS 2 Project Starter Template
 
