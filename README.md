@@ -1,2842 +1,847 @@
-> **What this is:** the 29-step handout for my live workshop *Mastering ROS 2 — Build an Edge-Avoiding Robot from Scratch* (12 July 2025): workspace, URDF, sensors, Gazebo, ros2_control and the avoidance node, written so a beginner can follow it alone.
+# 🤖 Franka Panda Color Sorting Robot
+
+A **ROS 2-based intelligent color sorting system** powered by the **Franka Emika Panda robotic arm**. This project seamlessly integrates **OpenCV computer vision**, **MoveIt 2 motion planning**, and **Gazebo simulation** to create an autonomous pick-and-place system that detects and sorts colored objects with precision.
+
+---
+
+## 🎥 Pick and Place Demo  
+
+https://github.com/user-attachments/assets/0813eb4e-310d-4b68-b538-3c8a857079a4
+
+
+> **At a glance:** a Franka Emika Panda (7-DOF) in Gazebo sorts red, green and blue blocks into bins. OpenCV HSV segmentation finds each block, tf2 moves its position into the robot frame, MoveIt 2 plans the pick through pymoveit2, and ros2_control executes arm and gripper trajectories. A Docker image runs it on ROS 2 Humble and Jazzy.
 >
-> Recording: [YouTube (2.5 h)](https://youtu.be/luZq317FUrE) · Finished code: [MechaMind-Labs/Edge_Avoiding_Robot](https://github.com/MechaMind-Labs/Edge_Avoiding_Robot) · TurtleSim basics: [Readme_Turtle.md](Readme_Turtle.md)
-
-# 🚀 ROS 2 Project Starter Template
-
-#### A clean, well-structured ROS 2 simulation project from scratch, ideal for workshops, personal learning, or prototyping. This walks you through every step — workspace setup, URDF creation, Gazebo simulation, ROS 2 Control, and more.
----
-
-## 🛠️ Build Your Own ROS2 Robot from Scratch – Workshop Starter Guide
-
-Welcome to the **"Mastering ROS2 – Build an Edge-Avoiding Robot from Scratch"** workshop!
-This guide will walk you through setting up your ROS2 package and building your first robot from **scratch**, step-by-step.
+> **Watch:** [full build masterclass (2 h 45 min)](https://youtu.be/0N3B8FG0T1Y) · [demo](https://youtu.be/EM88ld4cCNk) · [demo 2](https://youtu.be/V-1uXPxmQys) · [simulation short](https://www.youtube.com/shorts/HbTO98TFiUU)
+>
+> **Related:** [SCARA conveyor cell](https://github.com/Curious-Utkarsh/ROS2_SCARA_WS) — the same vision-guided pick pipeline on real hardware · [Dual-Panda tic-tac-toe](https://github.com/MechaMind-Labs/ROS2_Dual_Franka_Panda_TicTacToe_AI_Vision) — two Pandas playing a game with MoveIt 2 and OpenCV · [UR5 MediaPipe pick-and-place](https://github.com/MechaMind-Labs/UR5_PICK_AND_PLACE_MEDIAPIPE_ROS2) · [3-DOF arm digital twin](https://github.com/MechaMind-Labs/ROS2_3DOF_Robotic_Arm_Digital_Twin)
 
 ---
 
-## 📁 1. Create Your Workspace
+## ✨ Features
 
-Open your terminal and run the following:
+- 🎨 **Color Detection**: Real-time OpenCV-based vision system for Red, Green, and Blue objects
+- 🦾 **Motion Planning**: Advanced trajectory planning using MoveIt 2
+- 🎯 **Autonomous Operation**: Complete pick-and-place automation with gripper control
+- 🔄 **Dynamic Target Selection**: Switch between colors without restarting the system
+- 📊 **Visual Feedback**: Integrated RViz visualization for motion planning and execution
+- 🐳 **Docker Ready**: Pre-configured container for instant deployment
+
+---
+
+## 🎯 What You'll Learn
+
+- Setting up a complete ROS 2 robotic system from scratch
+- Integrating computer vision with robotic manipulation
+- Motion planning and execution with MoveIt 2
+- Using PyMoveIt2 for high-level Python control
+- Building modular ROS 2 packages
+- Docker containerization for robotics applications
+
+---
+
+## 📋 Table of Contents
+
+1. [🐳 Quick Start with Docker (Recommended)](#-quick-start-with-docker-recommended)
+2. [💻 Manual Installation on Local PC](#-manual-installation-on-local-pc)
+3. [🎮 Running the Project](#-running-the-project)
+4. [⚠️ Troubleshooting](#️-troubleshooting)
+5. [📚 References](#-references)
+
+---
+
+# 🐳 Quick Start with Docker (Recommended)
+
+Get up and running in minutes with our pre-built Docker image! This method eliminates dependency conflicts and provides a consistent, production-ready environment.
+
+## Prerequisites
+
+- **Docker** installed on your system
+- **X11 display server** (included in most Linux distributions)
+- **4GB+ free disk space** for the Docker image
+- **Stable internet connection** for pulling the image
+
+---
+
+## 🔧 Step 1: Install Docker
+
+### On Ubuntu/Debian Linux:
+
+**1.1 Set up Docker's apt repository:**
+```bash
+# Add Docker's official GPG key:
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+sudo apt update
+```
+
+**1.2 Install Docker packages:**
+```bash
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+```
+
+**1.3 Post-installation steps (Run Docker without sudo):**
+```bash
+# Create docker group (if not exists)
+sudo groupadd docker
+
+# Add your user to the docker group
+sudo usermod -aG docker $USER
+
+# Activate the changes to groups
+newgrp docker
+
+# Log out and back in for changes to take effect
+```
+
+**1.4 Verify Docker installation:**
+```bash
+docker run hello-world
+```
+✅ **Success!** You should see "Hello from Docker!" message.
+
+---
+
+### On Windows:
+
+1. Download **Docker Desktop** from: [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop)
+2. Run the installer and follow the setup wizard
+3. Enable **WSL 2** integration when prompted
+4. Restart your computer
+5. Install **VcXsrv** or **X410** for GUI support
+
+---
+
+### On macOS:
+
+1. Download **Docker Desktop** from: [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop)
+2. Drag Docker to Applications folder
+3. Launch Docker Desktop
+4. Install **XQuartz** for X11 support: `brew install --cask xquartz`
+
+---
+
+## 🖥️ Step 2: Enable GUI Support
+
+Docker containers need permission to access your display for RViz and Gazebo visualization.
 
 ```bash
-cd ~
-mkdir -p bot_ws/src
-cd bot_ws/src
+xhost +local:docker
 ```
+
+**Note:** Run this command each time you restart your computer before launching the container.
 
 ---
 
-## 🧱 2. Create a New ROS2 Package
+## 🚀 Step 3: Run the Docker Container
+
+Pull and start the pre-configured container with all dependencies:
 
 ```bash
-ros2 pkg create bot_description --build-type ament_cmake
+docker run -it --rm \
+  --name franka_panda_color_sorter \
+  --network host \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  curiousutkarsh/franka_panda_color_sorter:humble bash
 ```
 
-This creates the package `bot_description` with `ament_cmake` build system.
+**Command Breakdown:**
+- `--name franka_panda_color_sorter` → Assign a friendly container name
+- `--network host` → Share host network for seamless ROS 2 communication
+- `-e DISPLAY=$DISPLAY` → Pass display variable for GUI applications
+- `-v /tmp/.X11-unix:/tmp/.X11-unix:rw` → Mount X11 socket for graphics
+- `curiousutkarsh/franka_panda_color_sorter:humble` → Pre-built Docker image
+- `bash` → Start interactive shell
+
+🎉 **You're now inside the Docker container!** The workspace is pre-built and ready to use.
 
 ---
 
-## 📁 3. Add Essential Folders
+## 🎮 Step 4: Launch the System
 
-Navigate to the package and add necessary directories:
+Once inside the container, open **two terminal sessions**:
+
+### Terminal 1: Launch the Complete System
 
 ```bash
-cd bot_description
-mkdir launch models rviz urdf worlds
+# Inside Docker container
+source install/setup.bash
+ros2 launch panda_bringup pick_and_place.launch.py
 ```
+
+This launches:
+- ✅ Gazebo simulation with Panda robot
+- ✅ RViz motion planning visualization
+- ✅ Camera and color detection node
+- ✅ MoveIt 2 motion planning server
+- ✅ Robot controllers
+
+**Wait for all nodes to initialize** (you'll see "Ready to plan" messages)
 
 ---
 
-## 💻 4. Open in VS Code
+### Terminal 2: Run Pick-and-Place Node
 
-Return to the `src` directory and open the workspace in VS Code:
+Open a new terminal and attach to the running container:
 
 ```bash
-cd ~/bot_ws/src
-code .
+docker exec -it franka_panda_color_sorter bash
 ```
 
----
-
-## ⚙️ 5. Create the Base URDF (bot\_base.xacro)
-
-Go to the `urdf` folder in VS Code and create a file named `bot_base.xacro`. Add the following step by step:
-
-### Step 1: XML declaration and xacro root
-
-```xml
-<?xml version="1.0" ?>
-<robot name="bot" xmlns:xacro="http://www.ros.org/wiki/xacro"></robot>
-```
-
-### Step 2: Add `base_footprint` link
-
-```xml
-<link name="base_footprint"/>
-```
-
-### Step 3: Add `base_link`
-
-```xml
-<link name="base_link">
-    <inertial>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="5.0"/>
-        <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
-    </inertial>
-    <visual>
-        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-        <geometry>
-            <box size="0.7 0.5 0.2"/>
-        </geometry>
-        <material name="red">
-            <color rgba="1.0 0.0 0.0 1.0"/>
-        </material>
-    </visual>
-    <collision>
-        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-        <geometry>
-            <box size="0.7 0.5 0.2"/>
-        </geometry>
-    </collision>
-</link>
-```
-
-### Step 4: Add a fixed joint
-
-```xml
-<joint name="base_joint" type="fixed">
-    <origin xyz="0.0 0.0 0.15" rpy="0.0 0.0 0.0"/>
-    <parent link="base_footprint"/>
-    <child link="base_link"/>
-</joint>
-```
-
----
-
-## 🧩 6. Create the Main URDF (bot.urdf.xacro)
-
-In the same `urdf` folder, create a file called `bot.urdf.xacro` and add:
-
-```xml
-<?xml version="1.0" ?>
-<robot name="bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
-    <xacro:include filename="$(find bot_description)/urdf/bot_base.xacro" />
-</robot>
-```
-
----
-
-## 🚀 7. Create the Launch File
-
-Go to the `launch` folder and create `display.launch.py`:
-
-```python
-import os
-from ament_index_python.packages import get_package_share_directory
-
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import Command, LaunchConfiguration
-
-from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
-
-
-def generate_launch_description():
-    bot_description_dir = get_package_share_directory("bot_description")
-
-    model_arg = DeclareLaunchArgument(name="model", default_value=os.path.join(
-                                        bot_description_dir, "urdf", "bot.urdf.xacro"
-                                        ),
-                                      description="Absolute path to robot urdf file")
-    
-    robot_description = ParameterValue(Command([
-            "xacro ",
-            LaunchConfiguration("model"),
-            " is_sim:=True",
-        ]),
-        value_type=str
-    )
-    
-    robot_state_publisher_node = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        parameters=[{"robot_description": robot_description,
-                     "use_sim_time": True}]
-    )
-
-    joint_state_publisher_gui_node = Node(
-        package="joint_state_publisher_gui",
-        executable="joint_state_publisher_gui"
-    )
-
-    rviz_node = Node(
-        package="rviz2",
-        executable="rviz2",
-        name="rviz2",
-        output="screen",
-        arguments=["-d", os.path.join(bot_description_dir, "rviz", "display.rviz")],
-    )
-
-    return LaunchDescription([
-        model_arg,
-        joint_state_publisher_gui_node,
-        robot_state_publisher_node,
-        rviz_node
-    ])
-```
-
----
-
-## 🎯 RViz Setup
-## 8.A. Create RViz Configuration File
-
-File: rviz/display.rviz
+Inside the new terminal:
 
 ```bash
-Panels:
-  - Class: rviz_common/Displays
-    Help Height: 0
-    Name: Displays
-    Property Tree Widget:
-      Expanded:
-        - /RobotModel1/Description Topic1
-      Splitter Ratio: 0.5833333134651184
-    Tree Height: 685
-  - Class: rviz_common/Selection
-    Name: Selection
-  - Class: rviz_common/Tool Properties
-    Expanded:
-      - /Publish Point1
-    Name: Tool Properties
-    Splitter Ratio: 0.5886790156364441
-  - Class: rviz_common/Views
-    Expanded:
-      - /Current View1
-    Name: Views
-    Splitter Ratio: 0.5
-Visualization Manager:
-  Class: ""
-  Displays:
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz_default_plugins/LaserScan
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 0
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: LaserScan
-      Position Transformer: XYZ
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.029999999329447746
-      Style: Flat Squares
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /scan
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 0.5
-      Cell Size: 1
-      Class: rviz_default_plugins/Grid
-      Color: 160; 160; 164
-      Enabled: true
-      Line Style:
-        Line Width: 0.029999999329447746
-        Value: Lines
-      Name: Grid
-      Normal Cell Count: 0
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Plane: XY
-      Plane Cell Count: 10
-      Reference Frame: <Fixed Frame>
-      Value: true
-    - Alpha: 1
-      Class: rviz_default_plugins/RobotModel
-      Collision Enabled: false
-      Description File: ""
-      Description Source: Topic
-      Description Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /robot_description
-      Enabled: true
-      Links:
-        All Links Enabled: true
-        Expand Joint Details: false
-        Expand Link Details: false
-        Expand Tree: false
-        Link Tree Style: Links in Alphabetic Order
-        back_castor_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        base_footprint:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        front_castor_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        laser_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        left_wheel_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_wheel_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-      Mass Properties:
-        Inertia: false
-        Mass: false
-      Name: RobotModel
-      TF Prefix: ""
-      Update Interval: 0
-      Value: true
-      Visual Enabled: true
-    - Class: rviz_default_plugins/TF
-      Enabled: true
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-        back_castor_link:
-          Value: true
-        base_footprint:
-          Value: true
-        base_link:
-          Value: true
-        front_castor_link:
-          Value: true
-        laser_link:
-          Value: true
-        left_wheel_link:
-          Value: true
-        odom:
-          Value: true
-        right_wheel_link:
-          Value: true
-      Marker Scale: 1
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: false
-      Tree:
-        base_footprint:
-          base_link:
-            back_castor_link:
-              {}
-            front_castor_link:
-              {}
-            laser_link:
-              {}
-            left_wheel_link:
-              {}
-            right_wheel_link:
-              {}
-        odom:
-          {}
-      Update Interval: 0
-      Value: true
-  Enabled: true
-  Global Options:
-    Background Color: 48; 48; 48
-    Fixed Frame: base_footprint
-    Frame Rate: 30
-  Name: root
-  Tools:
-    - Class: rviz_default_plugins/MoveCamera
-    - Class: rviz_default_plugins/Select
-    - Class: rviz_default_plugins/FocusCamera
-    - Class: rviz_default_plugins/Measure
-      Line color: 128; 128; 0
-    - Class: rviz_default_plugins/SetInitialPose
-      Covariance x: 0.25
-      Covariance y: 0.25
-      Covariance yaw: 0.06853891909122467
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /initialpose
-    - Class: rviz_default_plugins/PublishPoint
-      Single click: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /clicked_point
-    - Class: nav2_rviz_plugins/GoalTool
-  Transformation:
-    Current:
-      Class: rviz_default_plugins/TF
-  Value: true
-  Views:
-    Current:
-      Class: rviz_default_plugins/Orbit
-      Distance: 3.625094413757324
-      Enable Stereo Rendering:
-        Stereo Eye Separation: 0.05999999865889549
-        Stereo Focal Distance: 1
-        Swap Stereo Eyes: false
-        Value: false
-      Focal Point:
-        X: -0.07663324475288391
-        Y: 0.07754191756248474
-        Z: -0.014682665467262268
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
-      Invert Z Axis: false
-      Name: Current View
-      Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6752017736434937
-      Target Frame: <Fixed Frame>
-      Value: Orbit (rviz_default_plugins)
-      Yaw: 2.0423831939697266
-    Saved: ~
-Window Geometry:
-  Displays:
-    collapsed: false
-  Height: 836
-  Hide Left Dock: false
-  Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd00000004000000000000018b000002eafc020000000cfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000002ea000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb00000018004e0061007600690067006100740069006f006e0020003201000001ee000001390000000000000000fb0000001e005200650061006c00730065006e0073006500430061006d006500720061000000028f000000980000000000000000fb0000000c00430061006d0065007200610000000267000000c00000000000000000fb0000000c00430061006d0065007200610100000267000000c00000000000000000000000010000010f000002eafc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002ea000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004420000003efc0100000002fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000004af000002ea00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
-  Selection:
-    collapsed: false
-  Tool Properties:
-    collapsed: false
-  Views:
-    collapsed: true
-  Width: 1600
-  X: 642
-  Y: 102
-
+source install/setup.bash
+ros2 run pymoveit2 pick_and_place.py --ros-args -p target_color:=R
 ```
 
----
+**Color Options:**
+- `target_color:=R` → Sort Red objects
+- `target_color:=G` → Sort Green objects  
+- `target_color:=B` → Sort Blue objects
 
-Absolutely! Here's how you can write the next step (📦 **Step 22**) for your GitHub `README.md`, showing how to set up the `CMakeLists.txt` and `package.xml` for the `bot_description` package — with clear explanations and emojis:
-
----
-
-## 📦 8.B.: Setup `CMakeLists.txt` and `package.xml` for `bot_description`
-
-This step sets up the core metadata and build configuration files for the `bot_description` package.
+🎯 **Watch the robot detect, pick, and place objects automatically!**
 
 ---
 
-### 🧱 `CMakeLists.txt`
+## 🔄 Step 5: Managing the Container
 
-Create or update your `CMakeLists.txt` inside the `bot_description` folder with the following content:
+### Switch Target Color:
 
-```cmake
-cmake_minimum_required(VERSION 3.8)
-project(bot_description)
-
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# find dependencies
-find_package(ament_cmake REQUIRED)
-
-# Install important directories like URDF, launch, rviz, etc.
-install(
-  DIRECTORY launch models urdf rviz worlds
-  DESTINATION share/${PROJECT_NAME}
-)
-
-# Optional testing support
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  set(ament_cmake_copyright_FOUND TRUE)
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
-
-ament_package()
-```
-
-✅ **What this does**:
-
-* Sets the CMake version and project name.
-* Enables strict compile warnings.
-* Finds the `ament_cmake` build system.
-* Installs your `launch`, `urdf`, `rviz`, `models`, and `worlds` folders.
-* Optionally sets up testing and linting tools.
-
----
-
-### 📄 `package.xml`
-
-Add the following `package.xml` file in the same `bot_description` folder:
-
-```xml
-<?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="3">
-  <name>bot_description</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="kutkarsh706@gmail.com">utk</maintainer>
-  <license>TODO: License declaration</license>
-
-  <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <!-- Runtime dependencies -->
-  <exec_depend>robot_state_publisher</exec_depend>
-  <exec_depend>urdf</exec_depend>
-  <exec_depend>joint_state_publisher_gui</exec_depend>
-  <exec_depend>rviz2</exec_depend>
-  <exec_depend>xacro</exec_depend>
-  <exec_depend>ros2launch</exec_depend>
-  <exec_depend>ros_gz_sim</exec_depend>
-
-  <!-- Test dependencies -->
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-
-  <export>
-    <build_type>ament_cmake</build_type>
-  </export>
-</package>
-```
-
-🧾 **What this includes**:
-
-* Metadata like package name, version, maintainer, and license.
-* Declares **runtime dependencies** like `xacro`, `robot_state_publisher`, `rviz2`, and `ros_gz_sim`.
-* Adds **testing tools** under test dependencies.
-* Uses `ament_cmake` as the build tool.
-
----
-
-
-## 🛠️ 9. Build the Workspace
-
-Go to your workspace root and build the package:
+Stop the pick-and-place node (`Ctrl+C`) and rerun with a new color:
 
 ```bash
-cd ~/bot_ws
+ros2 run pymoveit2 pick_and_place.py --ros-args -p target_color:=G
+```
+
+### Stop the Container:
+
+```bash
+# From host terminal (outside Docker)
+docker stop franka_panda_color_sorter
+```
+
+### Restart Existing Container:
+
+```bash
+docker start franka_panda_color_sorter
+docker exec -it franka_panda_color_sorter bash
+```
+
+### Remove Container:
+
+```bash
+docker stop franka_panda_color_sorter
+docker rm franka_panda_color_sorter
+```
+
+### Pull Latest Image:
+
+```bash
+docker pull curiousutkarsh/franka_panda_color_sorter:humble
+```
+
+---
+
+## 🛠️ Useful Docker Commands
+
+| Command | Purpose |
+|---------|---------|
+| `docker ps` | List running containers |
+| `docker ps -a` | List all containers (including stopped) |
+| `docker images` | List downloaded images |
+| `docker system prune` | Clean up unused containers/images |
+| `docker logs franka_panda_color_sorter` | View container logs |
+| `docker exec -it franka_panda_color_sorter bash` | Attach new terminal |
+
+---
+
+# 💻 Manual Installation on Local PC
+
+If you prefer complete control or need to modify the source code, follow this comprehensive setup guide for a local installation.
+
+## Prerequisites
+
+- **Ubuntu 22.04 LTS** (recommended for ROS 2 Humble)
+- **16GB+ RAM** (recommended for Gazebo simulation)
+- **20GB+ free disk space**
+- **Stable internet connection**
+
+---
+
+## 📦 Step 1: Install ROS 2 Humble
+
+### 1.1 Set Locale
+
+```bash
+sudo apt update && sudo apt upgrade -y
+locale  # check for UTF-8
+
+sudo apt install locales
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+```
+
+### 1.2 Setup Sources
+
+```bash
+# Add ROS 2 apt repository
+sudo apt install software-properties-common -y
+sudo add-apt-repository universe
+sudo apt update && sudo apt install curl -y
+
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+```
+
+### 1.3 Install ROS 2 Packages
+
+```bash
+sudo apt update
+sudo apt install ros-humble-desktop-full -y
+```
+
+### 1.4 Environment Setup
+
+```bash
+# Source ROS 2 environment
+source /opt/ros/humble/setup.bash
+
+# Add to bashrc for automatic sourcing
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 1.5 Install Development Tools
+
+```bash
+sudo apt install python3-rosdep python3-colcon-common-extensions python3-pip -y
+
+# Initialize rosdep
+sudo rosdep init
+rosdep update
+```
+
+---
+
+## 🔧 Step 2: Install MoveIt 2 and Dependencies
+
+```bash
+sudo apt install -y \
+  ros-humble-moveit \
+  ros-humble-moveit-common \
+  ros-humble-moveit-ros-move-group \
+  ros-humble-moveit-ros-planning \
+  ros-humble-moveit-ros-planning-interface \
+  ros-humble-moveit-visual-tools \
+  ros-humble-moveit-configs-utils \
+  ros-humble-moveit-setup-assistant \
+  ros-humble-ros2-control \
+  ros-humble-ros2-controllers \
+  ros-humble-gazebo-ros2-control \
+  ros-humble-ros-gz \
+  ros-humble-cv-bridge \
+  ros-humble-image-transport \
+  ros-humble-rqt-image-view
+```
+
+---
+
+## 📥 Step 3: Install Python Dependencies
+
+```bash
+pip3 install --no-cache-dir \
+  opencv-python==4.10.0.84 \
+  numpy==1.24.4 \
+  transforms3d
+```
+
+---
+
+## 🏗️ Step 4: Create and Build Workspace
+
+### 4.1 Create Workspace
+
+```bash
+mkdir -p ~/panda_ws/src
+cd ~/panda_ws
+```
+
+### 4.2 Clone the Repository
+
+```bash
+cd ~/panda_ws/src
+git clone https://github.com/MechaMind-Labs/Franka_Panda_Color_Sorting_Robot.git .
+```
+
+### 4.3 Install Package Dependencies
+
+```bash
+cd ~/panda_ws
+rosdep install --from-paths src --ignore-src --skip-keys=opencv_python -r -y
+```
+
+### 4.4 Build the Workspace
+
+```bash
+colcon build
+```
+
+**Note:** Initial build may take 10-15 minutes depending on your system.
+
+### 4.5 Source the Workspace
+
+```bash
+source install/setup.bash
+
+# Add to bashrc for convenience
+echo "source ~/panda_ws/install/setup.bash" >> ~/.bashrc
+```
+
+---
+
+## ✅ Step 5: Verify Installation
+
+Test that all packages are properly installed:
+
+```bash
+# Check available packages
+ros2 pkg list | grep panda
+
+# Expected output:
+# panda_bringup
+# panda_controller
+# panda_description
+# panda_moveit
+# panda_vision
+```
+
+---
+
+## 🎮 Running the Project
+
+### Complete Pick-and-Place System
+
+Open **two terminal windows**:
+
+#### Terminal 1: Launch System
+
+```bash
+source ~/panda_ws/install/setup.bash
+ros2 launch panda_bringup pick_and_place.launch.py
+```
+
+Wait for all nodes to initialize (~30 seconds)
+
+#### Terminal 2: Start Pick-and-Place
+
+```bash
+source ~/panda_ws/install/setup.bash
+ros2 run pymoveit2 pick_and_place.py --ros-args -p target_color:=R
+```
+
+**Change colors by stopping** (`Ctrl+C`) **and rerunning with different parameter:**
+
+```bash
+# For Green objects
+ros2 run pymoveit2 pick_and_place.py --ros-args -p target_color:=G
+
+# For Blue objects
+ros2 run pymoveit2 pick_and_place.py --ros-args -p target_color:=B
+```
+
+---
+
+## 🔍 Useful ROS 2 Commands
+
+### Monitoring and Debugging
+
+```bash
+# List all active nodes
+ros2 node list
+
+# List all topics
+ros2 topic list
+
+# View camera feed
+ros2 run rqt_image_view rqt_image_view
+
+# Echo detected colors
+ros2 topic echo /detected_color
+
+# Check robot joint states
+ros2 topic echo /joint_states
+
+# Monitor gripper state
+ros2 topic echo /panda_gripper/joint_states
+
+# View TF tree
+ros2 run rqt_tf_tree rqt_tf_tree
+
+# Visualize computation graph
+ros2 run rqt_graph rqt_graph
+```
+
+### System Diagnostics
+
+```bash
+# Check ROS 2 environment
+printenv | grep ROS
+
+# Verify MoveIt installation
+ros2 pkg list | grep moveit
+
+# Test motion planning
+ros2 launch panda_moveit moveit.launch.py
+```
+
+---
+
+# ⚠️ Troubleshooting
+
+## Common Issues and Solutions
+
+### 🔴 Build Failures
+
+**Error:** `Package 'xyz' not found` during build
+
+**Solutions:**
+```bash
+# Update rosdep database
+rosdep update
+
+# Reinstall dependencies
+cd ~/panda_ws
+rosdep install --from-paths src --ignore-src -r -y
+
+# Clean and rebuild
+rm -rf build/ install/ log/
 colcon build
 ```
 
 ---
 
-## 🌐 10. Source and Launch
+### 🔴 Gazebo Won't Start
 
-After a successful build:
+**Error:** `Gazebo crashes` or `Segmentation fault`
 
+**Solutions:**
 ```bash
-source ~/.bashrc
-ros2 launch bot_description display.launch.py
+# Reset Gazebo configuration
+killall gzserver gzclient
+rm -rf ~/.gazebo/
+
+# Check GPU drivers
+glxinfo | grep "OpenGL"
+
+# Try software rendering (slower but stable)
+export LIBGL_ALWAYS_SOFTWARE=1
+ros2 launch panda_bringup pick_and_place.launch.py
 ```
 
-Your robot should now appear in **RViz** with the correct URDF structure!
-
 ---
 
-Sure! Here's a **cleaner rewrite of Steps 11 to 13**, with each component (left/right wheels, front/rear castors, sensors) broken into **separate code snippets** for clarity in your `README.md`.
+### 🔴 RViz Display Issues
 
----
+**Error:** `RViz shows black screen` or crashes
 
-## **Step 11: Add Left and Right Wheels**
-
-### 📄 Edit `bot_base.xacro`
-
-Open the file:
-
+**Solutions:**
 ```bash
-cd ~/bot_ws/src/bot_description/urdf
-nano bot_base.xacro
+# Reset RViz configuration
+rm -rf ~/.rviz2/
+
+# Check display
+echo $DISPLAY
+
+# For Docker users
+xhost +local:docker
 ```
 
-### ➕ Add Right Wheel
+---
 
-```xml
-<!-- Right Wheel -->
-<link name="right_wheel_link">
-  <inertial>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <mass value="1.0"/>
-    <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
-  </inertial>
-  <visual>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <cylinder radius="0.15" length="0.05"/>
-    </geometry>
-    <material name="blue">
-      <color rgba="0.0 0.0 1.0 1.0"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <cylinder radius="0.15" length="0.05"/>
-    </geometry>
-  </collision>
-</link>
+### 🔴 MoveIt Planning Failures
 
-<joint name="right_wheel_joint" type="continuous">
-  <origin xyz="0.0 -0.275 0.0" rpy="1.57 0.0 0.0"/>
-  <parent link="base_link"/>
-  <child link="right_wheel_link"/>
-  <axis xyz="0.0 0.0 -1.0"/>
-</joint>
-```
+**Error:** `Unable to plan` or `No valid plan found`
 
-### ➕ Add Left Wheel
+**Solutions:**
+1. Check if all controllers are active:
+   ```bash
+   ros2 control list_controllers
+   ```
 
-```xml
-<!-- Left Wheel -->
-<link name="left_wheel_link">
-  <inertial>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <mass value="1.0"/>
-    <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
-  </inertial>
-  <visual>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <cylinder radius="0.15" length="0.05"/>
-    </geometry>
-    <material name="blue">
-      <color rgba="0.0 0.0 1.0 1.0"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <cylinder radius="0.15" length="0.05"/>
-    </geometry>
-  </collision>
-</link>
+2. Verify robot state in RViz
+3. Adjust planning time in configuration
+4. Check for collisions in scene
 
-<joint name="left_wheel_joint" type="continuous">
-  <origin xyz="0.0 0.275 0.0" rpy="1.57 0.0 0.0"/>
-  <parent link="base_link"/>
-  <child link="left_wheel_link"/>
-  <axis xyz="0.0 0.0 -1.0"/>
-</joint>
-```
+---
 
-### 🔧 Build and Launch RViz
+### 🔴 Camera Not Publishing
 
+**Error:** No images on `/camera/image_raw` topic
+
+**Solutions:**
 ```bash
-cd ~/bot_ws
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch bot_description display.launch.py
-```
+# Check if Gazebo camera plugin loaded
+ros2 topic list | grep camera
 
-✅ Check if **both wheels** are correctly attached in RViz.
+# Verify camera in Gazebo GUI
+# View → World → Models → camera
+
+# Restart launch file
+```
 
 ---
 
-## **Step 12: Add Castor Wheels**
+### 🔴 Color Detection Not Working
 
-### ➕ Add Front Castor
+**Error:** No objects detected or wrong colors
 
-```xml
-<!-- Front Castor -->
-<link name="front_castor_link">
-  <inertial>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <mass value="0.5"/>
-    <inertia ixx="0.005" ixy="0.0" ixz="0.0" iyy="0.005" iyz="0.0" izz="0.005"/>
-  </inertial>
-  <visual>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <sphere radius="0.045"/>
-    </geometry>
-    <material name="black">
-      <color rgba="0.0 0.0 0.0 1.0"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <sphere radius="0.045"/>
-    </geometry>
-  </collision>
-</link>
+**Solutions:**
+1. Check HSV thresholds in `color_detector.py`
+2. Verify lighting in Gazebo
+3. Test with `rqt_image_view`:
+   ```bash
+   ros2 run rqt_image_view rqt_image_view
+   ```
+4. Adjust camera position/angle
 
-<joint name="front_castor_joint" type="fixed">
-  <origin xyz="0.25 0.0 -0.1" rpy="0.0 0.0 0.0"/>
-  <parent link="base_link"/>
-  <child link="front_castor_link"/>
-</joint>
-```
+---
 
-### ➕ Add Rear Castor
+### 🔴 Docker Container Issues
 
-```xml
-<!-- Rear Castor -->
-<link name="back_castor_link">
-  <inertial>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <mass value="0.5"/>
-    <inertia ixx="0.005" ixy="0.0" ixz="0.0" iyy="0.005" iyz="0.0" izz="0.005"/>
-  </inertial>
-  <visual>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <sphere radius="0.045"/>
-    </geometry>
-    <material name="black">
-      <color rgba="0.0 0.0 0.0 1.0"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <geometry>
-      <sphere radius="0.045"/>
-    </geometry>
-  </collision>
-</link>
+**Error:** `Cannot connect to display`
 
-<joint name="back_castor_joint" type="fixed">
-  <origin xyz="-0.25 0.0 -0.1" rpy="0.0 0.0 0.0"/>
-  <parent link="base_link"/>
-  <child link="back_castor_link"/>
-</joint>
-```
-
-### 🔧 Rebuild and Launch RViz
-
+**Solution:**
 ```bash
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch bot_description display.launch.py
+# Before starting container
+xhost +local:docker
+
+# If still failing
+xhost +
 ```
 
-✅ Check if **both castors** are added and positioned correctly.
+**Error:** `Device or resource busy`
 
----
-
-## **Step 13: Add Sensor Using a Separate Xacro File**
-
-### 🆕 Create `bot_sensors.xacro`
-
+**Solution:**
 ```bash
-cd ~/bot_ws/src/bot_description/urdf
-nano bot_sensors.xacro
-```
+# Remove existing container
+docker rm -f franka_panda_color_sorter
 
-### 🧩 Add the Sensor Link and Joint
-
-```xml
-<?xml version="1.0" ?>
-<robot name="bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
-
-  <link name="laser_link">
-    <inertial>
-      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <mass value="0.3"/>
-      <inertia ixx="0.0002" ixy="0.0" ixz="0.0" iyy="0.0004" iyz="0.0" izz="0.0005"/>
-    </inertial>
-    <visual>
-      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <geometry>
-        <box size="0.05 0.2 0.1"/>
-      </geometry>
-      <material name="green">
-        <color rgba="0.0 1.0 0.0 1.0"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <geometry>
-        <box size="0.05 0.2 0.1"/>
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="laser_joint" type="fixed">
-    <origin xyz="0.35 0.0 0.0" rpy="0.0 0.0 0.0"/>
-    <parent link="base_link"/>
-    <child link="laser_link"/>
-  </joint>
-
-</robot>
-```
-
-### 🧩 Include in `bot.urdf.xacro`
-
-Open `bot.urdf.xacro`:
-
-```bash
-nano bot.urdf.xacro
-```
-
-Add this line **at the top**, before `<robot>` begins:
-
-```xml
-<xacro:include filename="$(find bot_description)/urdf/bot_sensors.xacro" />
-```
-
-### ✅ Why Use Xacro?
-
-Using `.xacro` provides the following benefits:
-
-* ✅ Reuse macros like functions to avoid repeating the same XML blocks.
-* ✅ Parameterize sizes, colors, and positions using variables.
-* ✅ Split URDF into smaller, manageable pieces.
-* ✅ Easier maintenance and debugging.
-
----
-
-### 🔁 Final Build and Visual Test
-
-```bash
-cd ~/bot_ws
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch bot_description display.launch.py
-```
-
-✅ You should now see the full robot in RViz with:
-
-* Base link
-* Left and right wheels
-* Front and back castors
-* A front-mounted laser sensor
-
----
-
----
-
-## 🚀 Step 14: Create the `gazebo.xacro` File
-
-📁 Navigate to the `urdf` folder and create a new file called **`gazebo.xacro`**:
-
-```xml
-<?xml version="1.0" ?>
-<robot name="bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
-</robot>
+# Restart Docker service
+sudo systemctl restart docker
 ```
 
 ---
 
-## ⚙️ Step 15: Add Gazebo Properties for Right Wheel
+## 🐛 Getting Help
 
-🔧 Inside the `<robot>` tag, add Gazebo friction and contact properties for the **right wheel**:
+If you encounter issues not covered here:
 
-```xml
-<!-- bot Wheels -->
-<gazebo reference="right_wheel_link">
-    <mu1>1000000000000000.0</mu1>
-    <mu2>1000000000000000.0</mu2>
-    <kp>1000000000000.0</kp>
-    <kd>10.0</kd>
-    <minDepth>0.001</minDepth>
-    <maxVel>0.1</maxVel>
-    <fdir1>1 0 0</fdir1>
-</gazebo>
-```
+1. **Check logs:**
+   ```bash
+   ros2 launch panda_bringup pick_and_place.launch.py --log-level debug
+   ```
 
-### 📝 Explanation:
+2. **Search existing issues:**
+   [GitHub Issues](https://github.com/MechaMind-Labs/Franka_Panda_Color_Sorting_Robot/issues)
 
-* 🔩 **mu1, mu2** – Friction coefficients (very high to prevent slipping)
-* 🧷 **kp** – Spring stiffness (high for rigid contact)
-* 🛠️ **kd** – Damping coefficient
-* 🔎 **minDepth** – Minimum depth before contact forces apply
-* ⚡ **maxVel** – Max contact velocity for stability
-* 🔁 **fdir1** – Friction direction (wheel rolling axis)
+3. **Create a new issue** with:
+   - System info: `uname -a`, `ros2 --version`
+   - Error messages
+   - Steps to reproduce
 
 ---
 
-## ⚙️ Step 16: Add Gazebo Properties for Left Wheel
+# 📂 Project Structure
 
-🛞 Add the same block for the **left wheel**:
-
-```xml
-<gazebo reference="left_wheel_link">
-    <mu1>1000000000000000.0</mu1>
-    <mu2>1000000000000000.0</mu2>
-    <kp>1000000000000.0</kp>
-    <kd>10.0</kd>
-    <minDepth>0.001</minDepth>
-    <maxVel>0.1</maxVel>
-    <fdir1>1 0 0</fdir1>
-</gazebo>
+```
+panda_ws/
+├── src/
+│   ├── panda_description/        # Robot URDF, meshes, visuals
+│   ├── panda_controller/         # Joint/gripper controllers
+│   ├── panda_moveit/            # MoveIt 2 configuration
+│   ├── panda_vision/            # OpenCV color detection
+│   ├── panda_bringup/           # Launch files for full system
+│   └── pymoveit2/               # Python MoveIt 2 interface
+│       └── examples/
+│           └── pick_and_place.py  # Main pick-and-place logic
+├── build/                        # Build artifacts
+├── install/                      # Installed packages
+└── log/                         # Build and runtime logs
 ```
 
 ---
 
-## 🛞 Step 17: Add Properties for Castor Wheels
+# 🧩 Package Overview
 
-⚙️ Castor wheels aren’t powered, so they use lower friction and different damping:
+| Package | Description | Key Files |
+|---------|-------------|-----------|
+| **panda_description** | Robot model and visualization | `panda.urdf.xacro`, meshes |
+| **panda_controller** | Controller configurations | `panda_controllers.yaml` |
+| **panda_moveit** | Motion planning setup | MoveIt configs, SRDF |
+| **panda_vision** | Computer vision system | `color_detector.py` |
+| **panda_bringup** | System launcher | `pick_and_place.launch.py` |
+| **pymoveit2** | High-level control | `pick_and_place.py` |
 
-```xml
-<!-- Caster Wheels -->
-<gazebo reference="front_castor_link">
-    <mu1>0.1</mu1>
-    <mu2>0.1</mu2>
-    <kp>1000000.0</kp>
-    <kd>100.0</kd>
-    <minDepth>0.001</minDepth>
-    <maxVel>1.0</maxVel>
-</gazebo>
+---
 
-<gazebo reference="back_castor_link">
-    <mu1>0.1</mu1>
-    <mu2>0.1</mu2>
-    <kp>1000000.0</kp>
-    <kd>100.0</kd>
-    <minDepth>0.001</minDepth>
-    <maxVel>1.0</maxVel>
-</gazebo>
+# 🚀 How It Works
+
+## System Architecture
+
+```
+Camera Feed → Color Detection → Object Localization
+                                        ↓
+                                 Motion Planning (MoveIt 2)
+                                        ↓
+                               Trajectory Execution
+                                        ↓
+                         Pick Object → Move to Bin → Place
 ```
 
----
+## Detailed Workflow
 
-## 🛰️ Step 18: Add 2D Laser Sensor Plugin
-
-📡 Add a simulated GPU-based laser scanner (LiDAR):
-
-```xml
-<!-- bot Sensors -->
-<!-- 2D Laser Sensor -->
-<gazebo reference="laser_link">
-    <sensor name="lidar" type="gpu_lidar">
-        <pose>0 0 0 1.57 0 0</pose>
-        <always_on>true</always_on>
-        <visualize>true</visualize>
-        <topic>scan</topic>
-        <update_rate>5</update_rate>
-        <gz_frame_id>laser_link</gz_frame_id> 
-        <lidar>
-            <scan>
-                <horizontal>
-                    <samples>10</samples>
-                    <resolution>1.00000</resolution>
-                    <min_angle>-1.000000</min_angle>
-                    <max_angle>0.0</max_angle>
-                </horizontal>
-            </scan>
-            <range>
-                <min>0.05</min>
-                <max>4.0</max>
-                <resolution>0.02</resolution>
-            </range>
-            <noise>
-                <type>gaussian</type>
-                <mean>0.0</mean>
-                <stddev>0.01</stddev>
-            </noise>
-        </lidar>
-    </sensor>
-</gazebo>
-```
+1. **Vision System** continuously monitors the workspace
+2. **Color detector** identifies target color and computes 3D position
+3. **PyMoveIt2** receives object coordinates
+4. **MoveIt 2** plans collision-free trajectory
+5. **Robot controller** executes motion
+6. **Gripper** closes to grasp object
+7. **Motion planner** computes path to sorting bin
+8. **Robot** moves to designated area
+9. **Gripper** opens to release object
+10. **System** returns to home position and repeats
 
 ---
 
-## 🧩 Step 19: Include `gazebo.xacro` in Your Main URDF
+# 💡 Customization Guide
 
-Go to `bot.urdf.xacro` and include the gazebo file:
+## Adjust Color Thresholds
 
-```xml
-<xacro:include filename="$(find bot_description)/urdf/gazebo.xacro"/>
-```
-
-📌 Place it below the other includes like `bot_base.xacro` and `bot_sensors.xacro`.
-
----
----
-
-## 🚀 Step 20: Launch Your Bot in Gazebo – `gazebo.launch.py`
-
-🔧 Go to the `launch/` folder in your `bot_description` package and **create a launch file** named `gazebo.launch.py`.
-
-Paste the following code inside:
+Edit `panda_vision/panda_vision/color_detector.py`:
 
 ```python
-import os
-from os import pathsep
-from pathlib import Path
-from ament_index_python.packages import get_package_share_directory
-
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
-from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution, PythonExpression
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-
-from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
-
-def generate_launch_description():
-    bot_description = get_package_share_directory("bot_description")
-
-    model_arg = DeclareLaunchArgument(
-        name="model", default_value=os.path.join(
-                bot_description, "urdf", "bot.urdf.xacro"
-            ),
-        description="Absolute path to robot urdf file"
-    )
-
-    world_name_arg = DeclareLaunchArgument(name="world_name", default_value="empty_table")
-
-    world_path = PathJoinSubstitution([
-            bot_description,
-            "worlds",
-            PythonExpression(expression=["'", LaunchConfiguration("world_name"), "'", " + '.world'"])
-        ]
-    )
-
-    model_path = str(Path(bot_description).parent.resolve())
-    model_path += pathsep + os.path.join(get_package_share_directory("bot_description"), 'models')
-
-    gazebo_resource_path = SetEnvironmentVariable(
-        "GZ_SIM_RESOURCE_PATH",
-        model_path
-    )
-
-    robot_description = ParameterValue(Command([
-            "xacro ",
-            LaunchConfiguration("model"),
-            " is_sim:=True",
-        ]),
-        value_type=str
-    )
-
-    robot_state_publisher_node = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        parameters=[{"robot_description": robot_description,
-                     "use_sim_time": True}]
-    )
-
-    gazebo = IncludeLaunchDescription(
-                PythonLaunchDescriptionSource([os.path.join(
-                    get_package_share_directory("ros_gz_sim"), "launch"), "/gz_sim.launch.py"]),
-                launch_arguments={
-                    "gz_args": PythonExpression(["'", world_path, " -v 4 -r'"])
-                }.items()
-             )
-
-    gz_spawn_entity = Node(
-        package="ros_gz_sim",
-        executable="create",
-        output="screen",
-        arguments=[
-            "-topic", "robot_description",
-            "-name", "bot",
-            "-x", "0.0",  
-            "-y", "0.0",  
-            "-z", "2.0",  
-            "-R", "0.0", 
-            "-P", "0.0",
-            "-Y", "0.0",
-        ],
-    )
-
-    gz_ros2_bridge = Node(
-        package="ros_gz_bridge",
-        executable="parameter_bridge",
-        arguments=[
-            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-            "/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
-        ],
-    )
-
-    return LaunchDescription([
-        model_arg,
-        world_name_arg,
-        gazebo_resource_path,
-        robot_state_publisher_node,
-        gazebo,
-        gz_spawn_entity,
-        gz_ros2_bridge,
-    ])
+# HSV ranges for different colors
+red_lower = (0, 120, 70)
+red_upper = (10, 255, 255)
 ```
 
-✅ This launch file:
+## Change Sorting Positions
 
-* Launches the **Gazebo simulator**
-* Loads your **robot description**
-* Spawns the robot into the world
-* Sets up **sensor bridges** for `/scan` and `/clock`
+Modify `pymoveit2/examples/pick_and_place.py`:
 
----
-
-## 🧱 Step 21: Add Table Model to `models/` Folder
-
-📁 Go to the `models/` folder inside the `bot_description` package and **paste the table model folder** there.
-
-Your structure should look like this:
-
-```
-bot_description/
-├── models/
-│   └── table/       # 👈 Make sure this folder contains model.sdf and model.config
+```python
+# Bin positions (x, y, z)
+RED_BIN = [0.5, -0.3, 0.2]
+GREEN_BIN = [0.5, 0.0, 0.2]
+BLUE_BIN = [0.5, 0.3, 0.2]
 ```
 
-✅ Gazebo will load this model when the appropriate world file references it.
+## Tune Motion Planning
 
----
-
-## 🌍 Step 22: Create an Empty World – `empty.world`
-
-📂 Go to the `worlds/` folder in the same package and **create a file** named `empty.world`.
-
-Paste the following contents inside:
-
-```xml
-<?xml version="1.0" ?>
-<sdf version="1.7">
-    <world name="empty_world">
-        <!-- Directional Light -->
-        <light type="directional" name="sun">
-            <cast_shadows>true</cast_shadows>
-            <pose>0 0 10 0 0 0</pose>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.2 0.2 0.2 1</specular>
-            <attenuation>
-                <range>1000</range>
-                <constant>0.9</constant>
-                <linear>0.01</linear>
-                <quadratic>0.001</quadratic>
-            </attenuation>
-            <direction>-0.5 0.1 -0.9</direction>
-        </light>
-
-        <!-- Ground Plane -->
-        <model name="ground_plane">
-            <static>true</static>
-            <link name="link">
-                <collision name="collision">
-                    <geometry>
-                        <plane>
-                            <normal>0 0 1</normal>
-                        </plane>
-                    </geometry>
-                </collision>
-                <visual name="visual">
-                    <geometry>
-                        <plane>
-                            <normal>0 0 1</normal>
-                            <size>100 100</size>
-                        </plane>
-                    </geometry>
-                    <material>
-                        <ambient>0.8 0.8 0.8 1</ambient>
-                        <diffuse>0.8 0.8 0.8 1</diffuse>
-                        <specular>0.8 0.8 0.8 1</specular>
-                    </material>
-                </visual>
-            </link>
-        </model>
-    </world>
-</sdf>
-```
-
-✅ This world:
-
-* Adds a **ground plane**
-* Adds **sunlight**
-* Keeps the world clean and minimal for testing your robot
-
----
-
-
----
-
-## 🌍 Step 23: Create an Empty World with a Table– `empty_table.world`
-
-📂 Go to the `worlds/` folder in the same package and **create a file** named `empty_table.world`.
-
-Paste the following contents inside:
-
-```xml
-<sdf version='1.9'>
-  <world name='empty_world'>
-    <gravity>0 0 -9.8</gravity>
-    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
-    <atmosphere type='adiabatic'/>
-    <physics type='ode'>
-      <max_step_size>0.001</max_step_size>
-      <real_time_factor>1</real_time_factor>
-      <real_time_update_rate>1000</real_time_update_rate>
-    </physics>
-    <scene>
-      <ambient>0.4 0.4 0.4 1</ambient>
-      <background>0.7 0.7 0.7 1</background>
-      <shadows>true</shadows>
-    </scene>
-    <model name='ground_plane'>
-      <static>true</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>1 1</size>
-            </plane>
-          </geometry>
-          <surface>
-            <friction>
-              <ode/>
-            </friction>
-            <bounce/>
-            <contact/>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-          <material>
-            <ambient>0.8 0.8 0.8 1</ambient>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.8 0.8 0.8 1</specular>
-          </material>
-        </visual>
-        <pose>0 0 0 0 -0 0</pose>
-        <inertial>
-          <pose>0 0 0 0 -0 0</pose>
-          <mass>1</mass>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <enable_wind>false</enable_wind>
-      </link>
-      <pose>0 0 0 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>0 0 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_2'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>1 0 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_3'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>1.01186 1.27053 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_4'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>0 0.652446 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_5'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>1 0.631228 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_6'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>0.00463 1.28609 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_1'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>-0.000582 -0.654619 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_2'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>0.99619 -0.630908 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_3'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>1.00337 -1.27806 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_4'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>0.004101 -1.29441 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_5'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>2.22092 1.26113 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_6'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>2.21551 0.611993 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_7'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>2.20432 -0.031436 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_8'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>2.22269 -0.638146 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <model name='CoffeeTable_1_9'>
-      <static>true</static>
-      <model name='aws_robomaker_residential_CoffeeTable_01'>
-        <link name='link'>
-          <inertial>
-            <mass>21.699999999999999</mass>
-            <inertia>
-              <ixx>0.81374999999999975</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>2.76675</iyy>
-              <iyz>0</iyz>
-              <izz>3.254</izz>
-            </inertia>
-          </inertial>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_collision.DAE</uri>
-                <scale>1 1 1</scale>
-              </mesh>
-            </geometry>
-            <surface>
-              <contact>
-                <ode>
-                  <max_vel>0.01</max_vel>
-                </ode>
-              </contact>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://aws_robomaker_residential_CoffeeTable_01/meshes/aws_CoffeeTable_01_visual.DAE</uri>
-              </mesh>
-            </geometry>
-            <meta>
-              <layer>1</layer>
-            </meta>
-          </visual>
-        </link>
-        <static>true</static>
-      </model>
-      <pose>2.21105 -1.28236 0.041983 0 -0 0</pose>
-      <self_collide>false</self_collide>
-    </model>
-    <light name='sun' type='directional'>
-      <pose>0 0 10 0 -0 0</pose>
-      <cast_shadows>true</cast_shadows>
-      <intensity>1</intensity>
-      <direction>-0.5 0.1 -0.9</direction>
-      <diffuse>0.8 0.8 0.8 1</diffuse>
-      <specular>0.2 0.2 0.2 1</specular>
-      <attenuation>
-        <range>1000</range>
-        <linear>0.01</linear>
-        <constant>0.90000000000000002</constant>
-        <quadratic>0.001</quadratic>
-      </attenuation>
-      <spot>
-        <inner_angle>0</inner_angle>
-        <outer_angle>0</outer_angle>
-        <falloff>0</falloff>
-      </spot>
-    </light>
-  </world>
-</sdf>
-```
-
----
-
----
-
-## 🏗️ Step 24: Build & Launch the Simulation
-
-### 🔨 1. Build your workspace
-
-Make sure you are in the root of your ROS 2 workspace (e.g., `~/bot_ws`) and then run:
-
-```bash
-colcon build --packages-select bot_description
-```
-
-After building, **source your workspace**:
-
-```bash
-source install/setup.bash
-```
-
-### 🚀 2. Launch the robot in Gazebo with the table
-
-Run the following launch command:
-
-```bash
-ros2 launch bot_description gazebo.launch.py
-```
-
-✅ What happens now:
-
-* 🌍 The **`empty.world`** is loaded into Gazebo.
-* 🪑 The **table model** from the `models/` folder is auto-loaded.
-* 🤖 The **robot** spawns **on top of the table** using the `z=2.0` value set in the `gazebo.launch.py` file.
-* 📡 The `/scan` and `/clock` topics are bridged for Gazebo–ROS 2 communication.
-
----
-
-🎉 You should now see your robot standing proudly on the table inside Gazebo!
-
----
-Here's how you can document **🧭 Step 25** in your `README.md` to **add controllers to your robot using `ros2_control`** and integrate them in the simulation using `ign_ros2_control`.
-
----
-
-## ⚙️ Step 25: Add Controllers using `ros2_control` 🛠️
-
-### 🧾 1. Create `ros2_control.xacro` in `urdf/` folder
-
-Inside your `bot_description/urdf/` folder, create a file named:
-
-```
-ros2_control.xacro
-```
-
-Paste the following contents into it:
-
-```xml
-<?xml version="1.0"?>
-<robot name="bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
-
-  <xacro:arg name="is_sim" default="true"/>
-
-  <ros2_control name="RobotSystem" type="system">
-
-    <xacro:property name="PI" value="3.14159265359" />
-
-    <hardware>
-      <plugin>ign_ros2_control/IgnitionSystem</plugin>
-    </hardware>
-
-    <joint name="right_wheel_joint">
-      <command_interface name="velocity">
-        <param name="min">-4.5</param>
-        <param name="max">4.5</param>
-      </command_interface>
-      <state_interface name="position" />
-      <state_interface name="velocity" />
-    </joint>
-
-    <joint name="left_wheel_joint">
-      <command_interface name="velocity">
-        <param name="min">-4.5</param>
-        <param name="max">4.5</param>
-      </command_interface>
-      <state_interface name="position" />
-      <state_interface name="velocity" />
-    </joint>
-
-  </ros2_control>
-
-</robot>
-```
-
-🧩 This file defines the **hardware interface** using the `IgnitionSystem` plugin and adds **velocity control** for both drive joints.
-
----
-
-### 🧬 2. Add the control plugin in `gazebo.xacro`
-
-Open your `bot_description/urdf/gazebo.xacro` and add the following inside the `<robot>` tag (but outside of any `<link>` or `<gazebo reference>` tags):
-
-```xml
-<!-- ROS 2 Control -->
-<gazebo>
-    <plugin filename="ign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">
-        <parameters>$(find bot_controller)/config/bot_controllers.yaml</parameters>
-    </plugin>
-
-    <plugin filename="ignition-gazebo-sensors-system" name="ignition::gazebo::systems::Sensors">
-        <render_engine>ogre2</render_engine>
-    </plugin>
-</gazebo>
-```
-
-📌 This plugin:
-
-* Loads your **ROS 2 controllers config** from `bot_controller/config/bot_controllers.yaml`.
-* Enables **sensor support** in Ignition Gazebo.
-
-## 🧩 Include `ros2_control.xacro` in Your Main URDF
-
-Go to `bot.urdf.xacro` and include the gazebo file:
-
-```xml
-<xacro:include filename="$(find bot_description)/urdf/ros2_control.xacro"/>
-```
-
-📌 Place it below the other includes like `bot_base.xacro`, `bot_sensors.xacro` and `gazebo.xacro`
-
----
-
-➡️ In the next step, we’ll define the actual controllers in a YAML config and create a new `bot_controller` package.
-
----
-
----
-
-## 🧭 Step 26: Create and Configure the `bot_controller` Package 🎮🤖
-
-### 🛠️ 1. Create the `bot_controller` package
-
-In your ROS 2 workspace (`bot_ws/src`), run the following command to create a new package:
-
-```bash
-ros2 pkg create bot_controller --build-type ament_cmake
-```
-
----
-
-### 📁 2. Create necessary folders
-
-Navigate to the new package and create two directories:
-
-```bash
-cd bot_controller
-mkdir config launch
-```
-
----
-
-### 📝 3. Add controller config YAML
-
-Inside the `config` folder, create a file named:
-
-```
-bot_controllers.yaml
-```
-
-Paste the following contents:
+Edit `panda_moveit/config/planning_python_api.yaml`:
 
 ```yaml
-controller_manager:
-  ros__parameters:
-    update_rate: 100
-
-    wheel_controller:
-      type: diff_drive_controller/DiffDriveController
-
-    joint_state_broadcaster:
-      type: joint_state_broadcaster/JointStateBroadcaster
-
-wheel_controller:
-  ros__parameters:
-    type: diff_drive_controller/DiffDriveController
-
-    use_stamped_vel: false
-    left_wheel_names  : ['left_wheel_joint']
-    right_wheel_names : ['right_wheel_joint']
-
-    publish_rate: 50.0
-    wheel_separation : 0.55
-    wheel_radius : 0.15
-
-    wheel_separation_multiplier: 1.0
-    left_wheel_radius_multiplier: 1.0
-    right_wheel_radius_multiplier: 1.0
-
-    cmd_vel_timeout: 0.5
-    base_frame_id: base_footprint
-    publish_limited_velocity: true
-    publish_wheel_data: true
-    enable_odom_tf: true
-
-    linear:
-      x:
-        has_velocity_limits    : true
-        max_velocity           : 1.0
-        min_velocity           : -1.0
-        has_acceleration_limits: true
-        max_acceleration       : 1.0
-        min_acceleration       : -1.0
-        has_jerk_limits        : false
-        max_jerk               : 0.5
-
-    angular:
-      z:
-        has_velocity_limits    : true
-        max_velocity           : 2.5
-        min_velocity           : -2.5
-        has_acceleration_limits: true
-        max_acceleration       : 2.5
-        min_acceleration       : -2.5
-        has_jerk_limits        : false
-        max_jerk               : 2.24
+plan_request_params:
+  planning_attempts: 1               # increase for cluttered scenes
+  max_velocity_scaling_factor: 1.0   # lower = slower, safer
+  max_acceleration_scaling_factor: 1.0
 ```
 
 ---
 
-### 🚀 4. Create a launch file
+# 📚 References
 
-In the `launch/` folder, create:
+## Official Documentation
+- 🌐 [ROS 2 Humble](https://docs.ros.org/en/humble/)
+- 🌐 [MoveIt 2](https://moveit.picknik.ai/humble/index.html)
+- 🌐 [Franka Emika Panda](https://frankaemika.github.io/)
+- 🌐 [PyMoveIt2](https://github.com/AndrejOrsula/pymoveit2)
+- 🌐 [Gazebo](https://gazebosim.org/)
 
-```
-controller.launch.py
-```
+## Learning Resources
+- 📖 [ROS 2 Tutorials](https://docs.ros.org/en/humble/Tutorials.html)
+- 📖 [MoveIt Tutorials](https://moveit.picknik.ai/humble/doc/tutorials/tutorials.html)
+- 📖 [OpenCV Python](https://docs.opencv.org/4.x/d6/d00/tutorial_py_root.html)
 
-Paste the following code:
-
-```python
-from launch import LaunchDescription
-from launch_ros.actions import Node
-
-def generate_launch_description():
-
-    joint_state_broadcaster_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=[
-            "joint_state_broadcaster",
-            "--controller-manager",
-            "/controller_manager",
-        ],
-    )
-
-    wheel_controller_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=[
-            "wheel_controller", 
-            "--controller-manager", 
-            "/controller_manager"
-        ],
-    )
-
-    return LaunchDescription([
-        joint_state_broadcaster_spawner,
-        wheel_controller_spawner,
-    ])
-```
+## Related Projects
+- 🔗 [franka_ros2](https://github.com/frankaemika/franka_ros2) - Official Franka ROS 2 packages
+- 🔗 [moveit2_tutorials](https://github.com/moveit/moveit2_tutorials)
+- 🔗 [ros2_control](https://control.ros.org/)
 
 ---
 
-### ⚙️ 5. Configure `CMakeLists.txt`
+# 🤝 Contributing
 
-Update your `CMakeLists.txt` as follows:
+We welcome contributions from the community! Here's how you can help:
 
-```cmake
-cmake_minimum_required(VERSION 3.5)
-project(bot_controller)
+### Ways to Contribute
 
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclpy REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(tf2_ros REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(trajectory_msgs REQUIRED)
-find_package(twist_mux_msgs REQUIRED)
-find_package(rclcpp_action REQUIRED)
+- 🐛 **Report Bugs**: Open an issue with detailed reproduction steps
+- 💡 **Suggest Features**: Share your ideas for improvements
+- 📝 **Improve Documentation**: Fix typos or add clarifications
+- 🔧 **Submit Pull Requests**: Add new features or fix bugs
 
-include_directories(include)
-include_directories(${EIGEN3_INCLUDE_DIR})
+### Development Workflow
 
-install(
-  DIRECTORY include
-  DESTINATION include
-)
-
-install(
-  DIRECTORY launch config
-  DESTINATION share/${PROJECT_NAME}
-)
-
-ament_package()
-```
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes and test thoroughly
+4. Commit with clear messages: `git commit -m 'Add amazing feature'`
+5. Push to your fork: `git push origin feature/amazing-feature`
+6. Open a Pull Request with description
 
 ---
 
-### 📦 6. Update `package.xml`
+# 📄 License
 
-Make sure your `package.xml` looks like this:
-
-```xml
-<?xml version="1.0"?>
-<package format="3">
-  <name>bot_controller</name>
-  <version>0.0.0</version>
-  <description>bot Controller Package</description>
-  <maintainer email="kutkarsh706@gmail.com">Utkarsh</maintainer>
-  <license>Apache 2.0</license>
-  <author email="kutkarsh706@gmail.com">utk</author>
-
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
-
-  <depend>rclcpp</depend>
-  <depend>rclpy</depend>
-  <depend>geometry_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>tf2_ros</depend>
-  <depend>tf2</depend>
-  <depend>eigen</depend>
-  <depend>trajectory_msgs</depend>
-  <depend>twist_mux_msgs</depend>
-  <depend>rclcpp_action</depend>
-  
-  <exec_depend>tf_transformations</exec_depend>
-  <exec_depend>ros2launch</exec_depend>
-  <exec_depend>robot_state_publisher</exec_depend>
-  <exec_depend>xacro</exec_depend>
-  <exec_depend>controller_manager</exec_depend>
-  <exec_depend>ros2_controllers</exec_depend>
-  <exec_depend>ros2_control</exec_depend>
-  <exec_depend>joint_state_publisher_gui</exec_depend>
-
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-
-  <export>
-    <build_type>ament_cmake</build_type>
-  </export>
-</package>
-```
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-✅ Once all files are in place, you're ready for the next step: **building the workspace** and **launching the robot with controllers**.
+# 🙌 Credits & Acknowledgments
+
+**Maintained by:** [Curious-Utkarsh](https://github.com/Curious-Utkarsh)
+
+**Special Thanks:**
+- Franka Emika for the excellent Panda robot
+- MoveIt community for motion planning framework
+- ROS 2 team for the middleware
+- All contributors and supporters
+
+**Inspired by:** Real-world industrial pick-and-place automation systems
+
+**Third-party code:** [`pymoveit2`](https://github.com/AndrejOrsula/pymoveit2) by Andrej Orsula (BSD-3-Clause) is vendored in `pymoveit2/` with its own licence.
 
 ---
 
----
+# ⭐ Show Your Support
 
-## 🕹️ Step 27: Teleoperate the Robot in Gazebo using Keyboard 🧭🧑‍💻
+If this project helped you learn robotics or build something amazing:
 
-After setting up your simulation and controllers, let’s now move to teleoperating the robot using keyboard commands via `teleop_twist_keyboard`.
-
----
-
-### ✅ 1. Launch the robot in Gazebo
-
-In **Terminal 1**, launch the Gazebo simulation with your robot:
-
-```bash
-ros2 launch bot_description gazebo.launch.py
-```
+- ⭐ **Star** the repository
+- 🐛 **Report** issues you encounter
+- 💡 **Suggest** improvements
+- 🤝 **Contribute** code or documentation
+- 📢 **Share** with the robotics community
 
 ---
 
-### ✅ 2. Launch the controllers
+**Built with ❤️ for the robotics community**
 
-In **Terminal 2**, spawn the controller manager and robot controllers:
-
-```bash
-ros2 launch bot_controller controller.launch.py
-```
-
----
-
-### ✅ 3. Install keyboard teleop tool (if not already installed)
-
-In **Terminal 3**, run:
-
-```bash
-sudo apt install ros-humble-teleop-twist-keyboard
-```
-
-Replace `${ROS_DISTRO}` with your ROS 2 distribution name (e.g., `humble`, `iron`, etc.).
-
----
-
-### ✅ 4. Run the teleop node
-
-Still in **Terminal 3**, run the teleop node and remap to your robot's velocity topic:
-
-```bash
-ros2 run teleop_twist_keyboard teleop_twist_keyboard \
-  --ros-args -p stamped:=false -r cmd_vel:=wheel_controller/cmd_vel_unstamped
-```
-
----
-
-### 🕹️ 5. Control your robot using your keyboard!
-
-Once the teleop node is running, use the following keys to control the robot:
-
-```
-Moving around:
-   u    i    o
-   j    k    l
-   m    ,    .
-
-i: move forward  
-k: stop  
-,: move backward  
-j/l: turn left/right
-
-CTRL-C to quit
-```
-
----
-
-✅ You should now be able to see your robot moving inside Gazebo based on your keyboard input!
-
----
-
----
-
-## 🚀 Step 28: Create `bot_bringup` Package to Launch Entire Stack
-
-To streamline launching your simulation, controllers, and optionally any custom scripts or RViz config, we’ll create a centralized **launch package**.
-
----
-
-### ✅ 1. Create the bringup package
-
-```bash
-cd ~/bot_ws/src
-ros2 pkg create bot_bringup --build-type ament_cmake
-```
-
----
-
-### ✅ 2. Create the launch folder
-
-```bash
-cd bot_bringup
-mkdir launch
-```
-
----
-
-### ✅ 3. Create `simulated_robot.launch.py`
-
-Inside the `launch/` folder, create the file `simulated_robot.launch.py`:
-
-```python
-import os
-from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-
-def generate_launch_description():
-    world_name = LaunchConfiguration("world_name")
-
-    world_name_arg = DeclareLaunchArgument(
-        "world_name",
-        default_value="empty_table"
-    )
-
-    gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(
-            get_package_share_directory("bot_description"),
-            "launch",
-            "gazebo.launch.py"
-        )),
-        launch_arguments={
-            "world_name": world_name
-        }.items()
-    )
-
-    controller_only = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(
-            get_package_share_directory("bot_controller"),
-            "launch",
-            "controller.launch.py"
-        ))
-    )
-
-    rviz = Node(
-        package="rviz2",
-        executable="rviz2",
-        arguments=["-d", os.path.join(
-            get_package_share_directory("bot_description"),
-            "rviz",
-            "display.rviz"
-        )],
-        output="screen",
-        parameters=[{"use_sim_time": True}]
-    )
-
-    edge_avoidance_node = Node(
-        package="bot_script",
-        executable="edge_detection",
-        name="edge_avoidance_node",
-        output="screen",
-        parameters=[{"use_sim_time": True}]
-    )
-
-    return LaunchDescription([
-        world_name_arg,
-        gazebo,
-        controller_only,
-        # edge_avoidance_node,
-        rviz,
-    ])
-```
-
-Uncomment lines as needed to launch custom logic or visualization.
-
----
-
-### ✅ 4. Update `CMakeLists.txt`
-
-```cmake
-cmake_minimum_required(VERSION 3.8)
-project(bot_bringup)
-
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-find_package(ament_cmake REQUIRED)
-
-install(
-  DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}
-)
-
-ament_package()
-```
-
----
-
-### ✅ 5. Update `package.xml`
-
-```xml
-<?xml version="1.0"?>
-<package format="3">
-  <name>bot_bringup</name>
-  <version>0.0.0</version>
-  <description>Launch everything for bot simulation</description>
-  <maintainer email="kutkarsh706@gmail.com">utk</maintainer>
-  <license>Apache-2.0</license>
-
-  <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <exec_depend>rviz2</exec_depend>
-  <exec_depend>bot_controller</exec_depend>
-  <exec_depend>bot_description</exec_depend>
-  <exec_depend>bot_script</exec_depend>
-
-  <export>
-    <build_type>ament_cmake</build_type>
-  </export>
-</package>
-```
-
----
-
-### ✅ 6. Build and source the workspace
-
-```bash
-cd ~/bot_ws
-colcon build --symlink-install
-source install/setup.bash
-```
-
----
-
-### ✅ 7. Launch the full system from one terminal 🎯
-
-```bash
-ros2 launch bot_bringup simulated_robot.launch.py
-```
-
-You now have one command that:
-
-* Launches your robot in the Gazebo world
-* Starts the controllers
-* Optionally starts RViz and your custom script
-
----
----
-
-## 🤖 Step 29: Create `bot_script` Package (for Custom Logic like Edge Detection)
-
-We'll now create a Python-based ROS 2 package to run robot logic nodes — such as edge detection, obstacle avoidance, or navigation scripts.
-
----
-
-### ✅ 1. Create the package
-
-```bash
-cd ~/bot_ws/src
-ros2 pkg create bot_script --build-type ament_python
-```
-
----
-
-### ✅ 2. Create the edge detection script
-
-Go into the Python module folder and add the script:
-
-```bash
-cd bot_script/bot_script
-touch edge_detection.py __init__.py
-```
-
-Make both files executable:
-
-```bash
-chmod +x edge_detection.py __init__.py
-```
-
-> You'll add logic inside `edge_detection.py` later.
-
----
-
-### ✅ 3. Edit `package.xml`
-
-Update the contents of `bot_script/package.xml`:
-
-```xml
-<?xml version="1.0"?>
-<package format="3">
-  <name>bot_script</name>
-  <version>0.0.0</version>
-  <description>Edge detection and behavior scripts for the bot</description>
-  <maintainer email="kutkarsh706@gmail.com">utk</maintainer>
-  <license>Apache-2.0</license>
-
-  <depend>rclpy</depend>
-  <depend>geometry_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>gazebo_msgs</depend>
-
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
-
-  <export>
-    <build_type>ament_python</build_type>
-  </export>
-</package>
-```
-
----
-
-### ✅ 4. Edit `setup.py`
-
-Replace `bot_script/setup.py` with:
-
-```python
-from setuptools import find_packages, setup
-
-package_name = 'bot_script'
-
-setup(
-    name=package_name,
-    version='0.0.0',
-    packages=find_packages(exclude=['test']),
-    data_files=[
-        ('share/ament_index/resource_index/packages',
-            ['resource/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
-    ],
-    install_requires=['setuptools'],
-    zip_safe=True,
-    maintainer='utk',
-    maintainer_email='kutkarsh706@gmail.com',
-    description='Edge detection and bot behavior logic',
-    license='Apache-2.0',
-    tests_require=['pytest'],
-    entry_points={
-        'console_scripts': [
-            'edge_detection = bot_script.edge_detection:main',
-        ],
-    },
-)
-```
-
----
-
-### ✅ 5. Final folder structure (recap)
-
-```bash
-bot_ws/src/bot_script/
-├── bot_script/
-│   ├── __init__.py
-│   └── edge_detection.py
-├── package.xml
-└── setup.py
-```
-
----
-
-
-✅ You're now ready to implement the logic inside `edge_detection.py` in the next step!
-
----
-
-## ✅ Step 30: Write Final Edge Detection Node and Run Complete Project
-
----
-
-### 🧠 1. Final `edge_detection.py` Node
-
-Paste this into `bot_ws/src/bot_script/bot_script/edge_detection.py`:
-
-```python
-#!/usr/bin/env python3
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist
-from time import sleep
-
-class EdgeAvoidanceBot(Node):
-    def __init__(self):
-        super().__init__('edge_avoidance_bot')
-        
-        self.publisher = self.create_publisher(Twist, '/wheel_controller/cmd_vel_unstamped', 10)
-        self.subscription = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
-        self.timer = self.create_timer(0.1, self.control_loop)
-        self.cmd_vel = Twist()
-
-        self.up = 0.0
-        self.down = 0.0
-
-        self.flag = False
-
-    def lidar_callback(self, msg):
-        # Extract ranges
-        ranges = msg.ranges
-        valid_ranges = [r if r > 0.05 and r < 4.0 else 4.0 for r in ranges]
-
-        self.up = valid_ranges[6]
-        self.down = valid_ranges[2]
-        #print(len(valid_ranges))
-
-        # Log the regions
-        self.get_logger().info(f"Distances - U: {self.up:.2f}, - D: {self.down:.2f}")
-
-    def control_loop(self):
-        # Default forward motion
-        self.cmd_vel.linear.x = 0.3
-        self.cmd_vel.angular.z = 0.0
-
-        #Edge Detection
-        if self.down > 0.50:
-            self.flag = True #Edge Detected
-
-        if self.flag == True and self.up > 0.60:
-            self.cmd_vel.linear.x = -0.4
-            self.cmd_vel.angular.z = -1.65
-            self.get_logger().info("Edge ahead! Reversing and turning.")
-        else:
-            self.flag = False
-
-
-
-        # Send command
-        self.publisher.publish(self.cmd_vel)
-
-def main(args=None):
-    rclpy.init(args=args)
-    bot = EdgeAvoidanceBot()
-    rclpy.spin(bot)
-    rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
-```
-
----
-
-### ✅ 2. Rebuild the Workspace
-
-After saving the script:
-
-```bash
-cd ~/bot_ws
-colcon build --symlink-install
-source install/setup.bash
-```
-
----
-
-### 🚀 3. Launch the Full Project
-
-#### Terminal 1: Launch Simulation + Controllers via `bot_bringup`
-
-```bash
-ros2 launch bot_bringup simulated_robot.launch.py
-```
-
-#### Terminal 2: Run Edge Detection Logic
-
-```bash
-ros2 run bot_script edge_detection
-```
-
-✅ Your robot will now **automatically stop near edges/cliffs** detected using `/scan` data, and otherwise drive forward. You can integrate additional logic later (like rotating on edge detection, etc.).
-
----
-
-### 🎉 Project Completed in 30 Steps!
-
-You now have a:
-
-* ✅ Fully simulated Gazebo robot on a table
-* ✅ Integrated ROS 2 Control with diff drive
-* ✅ Keyboard teleop support
-* ✅ Custom edge detection script reacting to lidar
-* ✅ One-command launch via bringup file
-
----
-
-### Congratulations on completing this build! 🥳
-
----
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+🚀 Happy Building! 🤖
